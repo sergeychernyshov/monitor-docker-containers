@@ -1,0 +1,95 @@
+version: '3.7'
+
+volumes:
+    prometheus_data: {}
+    grafana_data: {}
+networks:
+    pk_networks:
+        driver: bridge
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    container_name: pk_prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+     # - '--alertmanager.url=http://alertmanager:9093'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    expose:
+      - 9090
+    ports:
+      - 9090:9090
+    networks:
+      - pk_networks
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for PK containers"
+
+  nodeexporter:
+    image: prom/node-exporter
+    container_name: pk_nodeexporter
+    expose:
+      - 9100
+    ports:
+      - 9100:9100
+    networks:
+      - pk_networks
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for PK containers"
+
+  cadvisor:
+    image: google/cadvisor
+    container_name: pk_cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    expose:
+      - 8080
+    ports:
+      - 8080:8080
+    networks:
+      - pk_networks
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for PK containers"
+
+  grafana:
+    image: grafana/grafana
+    container_name: pk_grafana
+    volumes:
+      - grafana_data:/var/lib/grafana
+    env_file:
+      - ./user.config
+    expose:
+      - 3000
+    ports:
+      - 3000:3000
+    networks:
+      - pk_networks
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for PK containers"
+
+  alertmanager:
+    image: prom/alertmanager
+    expose:
+      - 9093
+    ports:
+      - 9093:9093
+    volumes:
+      - "./alertmanager/:/etc/alertmanager/"
+    networks:
+      - pk_networks
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    restart: always
+    labels:
+      org.laber-schema.group: "monitoring for PK containers"
